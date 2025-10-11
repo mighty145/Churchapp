@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 const ReportsPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
