@@ -249,7 +249,7 @@ const ManualEntryTab: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [formData]);
+  }, [formData, validateForm]);
 
   return (
     <Box sx={{ p: 3 }}>
