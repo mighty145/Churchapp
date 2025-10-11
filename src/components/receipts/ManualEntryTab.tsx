@@ -154,14 +154,13 @@ const ManualEntryTab: React.FC = () => {
     }
   };
 
-  const validateForm = async () => {
+  const validateForm = React.useCallback(async () => {
     setIsValidating(true);
     setError(null);
     setValidation(null);
 
     try {
       const response = await apiService.post<ValidationResult>('/api/invoices/validate', formData);
-      
       // Ensure response.data is a valid ValidationResult object
       if (response.data && typeof response.data === 'object' && 'valid' in response.data) {
         setValidation(response.data);
@@ -171,7 +170,7 @@ const ManualEntryTab: React.FC = () => {
     } catch (err: any) {
       // Handle various error response formats
       let errorMessage = 'Error validating form';
-      
+
       if (err.response?.data) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -181,18 +180,18 @@ const ManualEntryTab: React.FC = () => {
           errorMessage = err.response.data.message;
         } else if (Array.isArray(err.response.data)) {
           // Handle FastAPI validation errors
-          errorMessage = err.response.data.map((error: any) => 
+          errorMessage = err.response.data.map((error: any) =>
             `${error.loc?.join('.')}: ${error.msg}`
           ).join(', ');
         }
       }
-      
+
       setError(errorMessage);
       console.error('Validation error:', err);
     } finally {
       setIsValidating(false);
     }
-  };
+  }, [formData]);
 
   const handleGenerateReceipt = async () => {
     setIsGenerating(true);
