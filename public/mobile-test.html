@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error {
+            background-color: #ffe6e6;
+            border-color: #ff9999;
+            color: #cc0000;
+        }
+        .success {
+            background-color: #e6ffe6;
+            border-color: #99ff99;
+            color: #006600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mobile Login Test</h1>
+    <p>Test mobile login functionality directly</p>
+    
+    <div class="form-group">
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="text" id="phoneNumber" value="9823786415" placeholder="Enter phone number">
+    </div>
+    
+    <div class="form-group">
+        <button onclick="testLogin()">Test Login</button>
+    </div>
+    
+    <div class="form-group">
+        <button onclick="testHealth()">Test Health Check</button>
+    </div>
+    
+    <div class="form-group">
+        <button onclick="testDebug()">Test Debug Info</button>
+    </div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        const API_BASE = 'http://192.168.1.3:8000';
+        
+        function showResult(content, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = content;
+            resultDiv.className = isError ? 'result error' : 'result success';
+            resultDiv.style.display = 'block';
+        }
+        
+        async function testHealth() {
+            try {
+                showResult('Testing health check...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                showResult(`Health Check Success:\n${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                showResult(`Health Check Error:\n${error.message}`, true);
+            }
+        }
+        
+        async function testDebug() {
+            try {
+                showResult('Testing debug info...');
+                const response = await fetch(`${API_BASE}/debug/request-info`);
+                const data = await response.json();
+                showResult(`Debug Info Success:\n${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                showResult(`Debug Info Error:\n${error.message}`, true);
+            }
+        }
+        
+        async function testLogin() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            
+            if (!phoneNumber) {
+                showResult('Please enter a phone number', true);
+                return;
+            }
+            
+            try {
+                showResult(`Testing login for ${phoneNumber}...`);
+                
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        phone_number: phoneNumber
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(`Login Success!\n\nToken: ${data.access_token.substring(0, 50)}...\nRole: ${data.user.role}\nPhone: ${data.user.phone_number}\nExpires in: ${data.expires_in} seconds`);
+                } else {
+                    const errorText = await response.text();
+                    showResult(`Login Failed!\nStatus: ${response.status}\nResponse: ${errorText}`, true);
+                }
+            } catch (error) {
+                showResult(`Login Error:\n${error.message}\n\nThis might be a CORS or network connectivity issue.`, true);
+            }
+        }
+        
+        // Test on page load
+        window.addEventListener('load', function() {
+            testHealth();
+        });
+    </script>
+</body>
+</html>
