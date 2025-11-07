@@ -10,14 +10,25 @@ import {
   BibleVerse,
   EnvelopeDonation,
   CollectionStatistics,
+  ExtractRecord,
+  Expense,
+  ExpenseCreate,
 } from '../types';
 
 class ApiService {
+  // Extract cheque records for Sunday Report
+  async getChequeExtractRecords(invoiceDate: string): Promise<any> {
+    const response = await this.api.get(`/api/collections/cheque-records`, {
+      params: { invoice_date: invoiceDate },
+    });
+    return response.data;
+  }
   private api: AxiosInstance;
   private baseURL: string;
 
   constructor() {
     this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 30000,
@@ -51,14 +62,19 @@ class ApiService {
         console.error('API Error response:', error.response);
         
         if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          // ...existing code...
         }
         return Promise.reject(error);
       }
     );
+  }
+
+  // Extract cash records for Sunday Report
+  async getCashExtractRecords(invoiceDate: string): Promise<any> {
+    const response = await this.api.get(`/api/collections/cash-records`, {
+      params: { invoice_date: invoiceDate },
+    });
+    return response.data;
   }
 
   // Authentication endpoints
@@ -128,6 +144,18 @@ class ApiService {
     return response.data;
   }
 
+  async getExtractRecordsByDateRange(startDate: string, endDate: string): Promise<any> {
+    console.log('API Service - Get extract records by date range:', startDate, endDate);
+    const response = await this.api.get('/api/collections/extract-records', {
+      params: { 
+        start_date: startDate, 
+        end_date: endDate 
+      },
+    });
+    console.log('API Service - Extract records response:', response.data);
+    return response.data;
+  }
+
   // Receipt endpoints
   async generateReceipts(collectionId: string, generateAll: boolean = true): Promise<Receipt[]> {
     const response: AxiosResponse<Receipt[]> = await this.api.post('/api/receipts/generate', {
@@ -160,6 +188,7 @@ class ApiService {
     });
     return response.data;
   }
+
 
   async getExtractRecordsByDate(invoiceDate: string): Promise<any> {
     console.log('API Service - Extract by date request:', invoiceDate);
@@ -287,6 +316,50 @@ class ApiService {
 
   async getDailyBibleVerse(): Promise<BibleVerse> {
     const response: AxiosResponse<BibleVerse> = await this.api.get('/api/bible-verse');
+    return response.data;
+  }
+
+  // Expense Management
+  async createExpense(expenseData: ExpenseCreate): Promise<Expense> {
+    const response: AxiosResponse<Expense> = await this.api.post('/api/expenses/', expenseData);
+    return response.data;
+  }
+
+  async getExpenses(startDate?: string, endDate?: string, category?: string): Promise<Expense[]> {
+    const params: any = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    if (category) params.category = category;
+    
+    const response: AxiosResponse<Expense[]> = await this.api.get('/api/expenses/', { params });
+    return response.data;
+  }
+
+  async getExpense(expenseId: string): Promise<Expense> {
+    const response: AxiosResponse<Expense> = await this.api.get(`/api/expenses/${expenseId}`);
+    return response.data;
+  }
+
+  async updateExpense(expenseId: string, expenseData: Partial<ExpenseCreate>): Promise<Expense> {
+    const response: AxiosResponse<Expense> = await this.api.put(`/api/expenses/${expenseId}`, expenseData);
+    return response.data;
+  }
+
+  async deleteExpense(expenseId: string): Promise<void> {
+    await this.api.delete(`/api/expenses/${expenseId}`);
+  }
+
+  async uploadExpenseDocument(file: File, receiptNumber: string, expenseDate: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('receipt_number', receiptNumber);
+    formData.append('expense_date', expenseDate);
+    
+    const response = await this.api.post('/api/expenses/upload-document', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   }
 

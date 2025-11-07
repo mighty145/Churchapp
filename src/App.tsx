@@ -13,6 +13,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ReceiptsPage from './pages/ReceiptsPage';
+import ExpensesPage from './pages/ExpensesPage';
 import ReconciliationPage from './pages/ReconciliationPage';
 import ReportsPage from './pages/ReportsPage';
 import './App.css';
@@ -58,6 +59,14 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <ReceiptsPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/expenses" element={
+                    <ProtectedRoute requireAdmin>
+                      <Layout>
+                        <ExpensesPage />
                       </Layout>
                     </ProtectedRoute>
                   } />

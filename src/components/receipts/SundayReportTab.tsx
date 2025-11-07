@@ -240,16 +240,16 @@ const SundayReportTab: React.FC = () => {
       console.log('🌐 Using API service for authenticated request');
       
       // Use apiService which handles authentication automatically
-      const responseData = await apiService.getExtractRecordsByDate(dateStr);
+  const responseData = await apiService.getCashExtractRecords(dateStr);
       
       console.log('✅ Success! API response data:', responseData);
       console.log('📊 Found records:', responseData.records?.length || 0);
       
       const extractRecords: ExtractRecord[] = responseData.records.map((record: any, index: number) => ({
-        id: `extract-${record.ReceiptNo || index}`,
-        name: record.Name || '',
-        total: parseFloat(record.Total) || 0,
-        description: record.Description || '',
+        id: record.id || `extract-${index}`,
+        name: record.name || '',
+        total: record.total || 0,
+        description: record.description || '',
         originalData: record
       }));
 
@@ -831,18 +831,16 @@ const SundayReportTab: React.FC = () => {
       console.log('🧾 Loading cheque records for date:', formattedDate);
       console.log('📅 Selected date object:', selectedDate);
       
-      // Use API service instead of manual fetch
-      const data = await apiService.getExtractChequeRecordsByDate(formattedDate);
+      // Use API service to fetch from Cosmos DB
+      const data = await apiService.getChequeExtractRecords(formattedDate);
       console.log('✅ Cheque API success response:', data);
-      
       const chequeRecords = data.records.map((record: any, index: number) => ({
-        id: `cheque-${Date.now()}-${index}`,
-        name: record.Name || '',
-        total: parseFloat(record.Total) || 0,
-        description: record.Description || '',
+        id: record.id || `cheque-${index}`,
+        name: record.name || '',
+        total: record.total || 0,
+        description: record.description || '',
         originalData: record
       }));
-      
       setChequeRecords(chequeRecords);
       
       if (data.records.length > 0) {

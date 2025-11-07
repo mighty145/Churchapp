@@ -9,8 +9,18 @@ import {
   TextField,
   Button,
   Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import { DashboardStats, CollectionStatistics } from '../types';
+import { DashboardStats, CollectionStatistics, ExtractRecord } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import apiService from '../services/api';
@@ -22,40 +32,99 @@ const DashboardPage: React.FC = () => {
   const [loadingStats, setLoadingStats] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const [collectionStartDate, setCollectionStartDate] = useState<string>('');
+  const [collectionEndDate, setCollectionEndDate] = useState<string>('');
+  const [extractRecords, setExtractRecords] = useState<ExtractRecord[]>([]);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('ALL');
   const { user, isAdmin } = useAuth();
   const { lastMessage, isConnected } = useWebSocket();
+
+  // Helper function to format date as DD-MMM-YYYY
+  const formatDate = (dateString: string): string => {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  // Helper function to convert number to words (Indian numbering system)
+  const numberToWords = (num: number): string => {
+    if (num === 0) return 'Zero Rupees';
+    
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    const convertLessThanThousand = (n: number): string => {
+      if (n === 0) return '';
+      if (n < 10) return ones[n];
+      if (n < 20) return teens[n - 10];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+      return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convertLessThanThousand(n % 100) : '');
+    };
+    
+    // Indian numbering: Crores, Lakhs, Thousands, Hundreds
+    const crores = Math.floor(num / 10000000);
+    const lakhs = Math.floor((num % 10000000) / 100000);
+    const thousands = Math.floor((num % 100000) / 1000);
+    const remainder = Math.floor(num % 1000);
+    
+    let result = '';
+    
+    if (crores > 0) {
+      result += convertLessThanThousand(crores) + ' Crore ';
+    }
+    if (lakhs > 0) {
+      result += convertLessThanThousand(lakhs) + ' Lakh ';
+    }
+    if (thousands > 0) {
+      result += convertLessThanThousand(thousands) + ' Thousand ';
+    }
+    if (remainder > 0) {
+      result += convertLessThanThousand(remainder);
+    }
+    
+    return result.trim() + ' Rupees';
+  };
 
   // Initialize date range (current financial year by default)
   useEffect(() => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-based (April = 3)
+    const currentMonth = today.getMonth(); // 0-based (September = 8)
     
     // Calculate current financial year start year
     let fyStartYear;
-    if (currentMonth >= 3) { // April (3) onwards - we're in the current FY
+    if (currentMonth >= 8) { // September (8) onwards - we're in the current FY
       fyStartYear = currentYear;
-    } else { // January to March - we're in the previous FY
+    } else { // January to August - we're in the previous FY
       fyStartYear = currentYear - 1;
     }
     
     // Create start date string directly (avoids timezone issues)
-    const startDateString = `${fyStartYear}-04-01`; // April 1st of financial year
+    const startDateString = `${fyStartYear}-09-30`; // 30th September of financial year
     const endDateString = today.toISOString().split('T')[0];
     
     setStartDate(startDateString);
     setEndDate(endDateString);
+    
+    // For Load Collection: set default start date as 30th Sep 2025 and end date as current date
+    setCollectionStartDate('2025-09-30');
+    setCollectionEndDate(endDateString);
   }, []);
 
   // Helper function to get financial year
   const getFinancialYear = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-based, so April = 3
+    const currentMonth = today.getMonth(); // 0-based, so September = 8
     
-    if (currentMonth >= 3) { // April (3) onwards
+    if (currentMonth >= 8) { // September (8) onwards
       return { startYear: currentYear, endYear: currentYear + 1 };
-    } else { // January to March
+    } else { // January to August
       return { startYear: currentYear - 1, endYear: currentYear };
     }
   };
@@ -96,6 +165,85 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const loadCollections = async () => {
+    if (!collectionStartDate || !collectionEndDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    try {
+      setLoadingCollections(true);
+      console.log('Loading collections from', collectionStartDate, 'to', collectionEndDate);
+      const data = await apiService.getExtractRecordsByDateRange(collectionStartDate, collectionEndDate);
+      
+      // Filter and map the data to extract only the records with id starting with "extract"
+      const filteredRecords = data
+        .filter((record: any) => record.id && record.id.startsWith('extract'))
+        .map((record: any) => ({
+          id: record.id,
+          invoice_date: record.invoice_date,
+          receipt_no: record.receipt_no,
+          name: record.name,
+          payment_method: record.payment_method,
+          total: record.total,
+          description: record.description,
+        }))
+        .sort((a: any, b: any) => {
+          // Sort by receipt_no in ascending order
+          const receiptA = a.receipt_no || '';
+          const receiptB = b.receipt_no || '';
+          return receiptA.localeCompare(receiptB, undefined, { numeric: true });
+        });
+      
+      setExtractRecords(filteredRecords);
+      console.log('Loaded extract records:', filteredRecords);
+    } catch (error) {
+      console.error('Error loading collections:', error);
+      alert('Error loading collections');
+    } finally {
+      setLoadingCollections(false);
+    }
+  };
+
+  const downloadCollectionsCSV = () => {
+    // Filter records based on payment method filter
+    const filteredRecords = extractRecords.filter(
+      record => paymentMethodFilter === 'ALL' || record.payment_method === paymentMethodFilter
+    );
+
+    // Create CSV header
+    const headers = ['Sr. No', 'Receipt No.', 'Date', 'Name', 'Amount', 'Payment Method', 'Description'];
+    
+    // Create CSV rows
+    const rows = filteredRecords.map((record, index) => [
+      index + 1,
+      record.receipt_no,
+      formatDate(record.invoice_date),
+      record.name,
+      record.total.toFixed(2),
+      record.payment_method,
+      `"${record.description.replace(/"/g, '""')}"` // Escape quotes in description
+    ]);
+
+    // Combine header and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `collections_${collectionStartDate}_to_${collectionEndDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Handle real-time updates
   useEffect(() => {
     if (lastMessage && lastMessage.type === 'collection_update') {
@@ -127,33 +275,39 @@ const DashboardPage: React.FC = () => {
       {stats ? (
         <Box sx={{ mt: 3 }}>
           <Typography variant="h5" gutterBottom>
-            Financial Year (Apr-{startYear} to Mar-{endYear})
+            Financial Year (30-Sep-{startYear} to 31-Mar-{endYear})
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-            <Card sx={{ minWidth: 200 }}>
+            <Card sx={{ minWidth: 200, flex: 1 }}>
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
                   Total Collections
                 </Typography>
                 <Typography variant="h4">
-                  ₹{(stats.collections.total_collections_amount || stats.collections.total_expenditure).toFixed(2)}
+                  ₹{(stats.collections.total_collections_amount || 0).toFixed(2)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontSize: '0.7rem' }}>
+                  {numberToWords(Math.floor(stats.collections.total_collections_amount || 0))}
                 </Typography>
               </CardContent>
             </Card>
             
-            <Card sx={{ minWidth: 200 }}>
+            <Card sx={{ minWidth: 200, flex: 1 }}>
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
                   Total Expenditure
                 </Typography>
                 <Typography variant="h4">
-                  ₹0.00
+                  ₹{(stats.collections.total_expenditure || 0).toFixed(2)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontSize: '0.7rem' }}>
+                  {numberToWords(Math.floor(stats.collections.total_expenditure || 0))}
                 </Typography>
               </CardContent>
             </Card>
             
-            <Card sx={{ minWidth: 200 }}>
+            <Card sx={{ minWidth: 200, flex: 1 }}>
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
                   Total Receipts
@@ -349,6 +503,107 @@ const DashboardPage: React.FC = () => {
                   </Card>
                 </Box>
               </Box>
+            </Box>
+          )}
+
+          {/* Load Collection Date Range Picker */}
+          <Paper sx={{ p: 3, mt: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Box sx={{ minWidth: 200, flex: 1 }}>
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  value={collectionStartDate}
+                  onChange={(e) => setCollectionStartDate(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
+              <Box sx={{ minWidth: 200, flex: 1 }}>
+                <TextField
+                  label="End Date"
+                  type="date"
+                  value={collectionEndDate}
+                  onChange={(e) => setCollectionEndDate(e.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
+              <Box sx={{ minWidth: 200, flex: 1 }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={loadCollections}
+                  disabled={loadingCollections || !collectionStartDate || !collectionEndDate}
+                  fullWidth
+                  sx={{ height: 56 }}
+                >
+                  {loadingCollections ? <CircularProgress size={24} /> : 'Load Collection'}
+                </Button>
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Extract Records Table Display */}
+          {extractRecords.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              {/* Payment Method Filter and Download Button */}
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <FormControl sx={{ minWidth: 200 }}>
+                    <InputLabel>Payment Method</InputLabel>
+                    <Select
+                      value={paymentMethodFilter}
+                      label="Payment Method"
+                      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                    >
+                      <MenuItem value="ALL">All</MenuItem>
+                      <MenuItem value="CASH">CASH</MenuItem>
+                      <MenuItem value="CHEQUE">CHEQUE</MenuItem>
+                      <MenuItem value="ONLINE">ONLINE</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={downloadCollectionsCSV}
+                    sx={{ height: 56 }}
+                  >
+                    Download CSV
+                  </Button>
+                </Box>
+              </Paper>
+
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'primary.main' }}>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Sr. No</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Receipt No.</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Date</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Name</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Amount</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Payment Method</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Description</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {extractRecords
+                      .filter(record => paymentMethodFilter === 'ALL' || record.payment_method === paymentMethodFilter)
+                      .map((record, index) => (
+                        <TableRow key={record.id} hover>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{record.receipt_no}</TableCell>
+                          <TableCell>{formatDate(record.invoice_date)}</TableCell>
+                          <TableCell>{record.name}</TableCell>
+                          <TableCell>₹{record.total.toFixed(2)}</TableCell>
+                          <TableCell>{record.payment_method}</TableCell>
+                          <TableCell>{record.description}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Box>
           )}
         </Box>

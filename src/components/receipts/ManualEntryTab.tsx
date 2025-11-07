@@ -24,7 +24,8 @@ import {
   Person,
   LocationOn,
   Phone,
-  CalendarToday
+  CalendarToday,
+  Clear
 } from '@mui/icons-material';
 import apiService from '../../services/api';
 
@@ -237,6 +238,41 @@ const ManualEntryTab: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      invoice_date: new Date().toISOString().split('T')[0],
+      name: '',
+      address: '',
+      country_code: '+91',
+      mobile_number: '',
+      tithe_from_month: currentMonth,
+      tithe_from_year: new Date().getFullYear().toString(),
+      tithe_to_month: currentMonth,
+      tithe_to_year: new Date().getFullYear().toString(),
+      tithe_amount: 0,
+      membership_from_month: currentMonth,
+      membership_from_year: new Date().getFullYear().toString(),
+      membership_to_month: currentMonth,
+      membership_to_year: new Date().getFullYear().toString(),
+      membership_amount: 0,
+      birthday_thank_offering: 0,
+      wedding_anniversary_thank_offering: 0,
+      mission_and_evangelism_fund: 0,
+      st_stephens_social_aid_fund: 0,
+      special_thanks_amount: 0,
+      charity_fund_amount: 0,
+      donation_for: '',
+      donation_amount: 0,
+      harvest_auction_comment: '',
+      harvest_auction_amount: 0,
+      online_cheque_no: '',
+      payment_method: 'CASH'
+    });
+    setValidation(null);
+    setError(null);
+    setReceiptResult(null);
   };
 
   // Auto-validate when form data changes (debounced)
@@ -488,6 +524,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.tithe_amount}
                   onChange={handleInputChange('tithe_amount')}
+                  onFocus={(e) => e.target.select()}
                   sx={{ mb: 3 }}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
@@ -567,6 +604,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.membership_amount}
                   onChange={handleInputChange('membership_amount')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -581,6 +619,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.birthday_thank_offering}
                   onChange={handleInputChange('birthday_thank_offering')}
+                  onFocus={(e) => e.target.select()}
                   sx={{ mb: 2 }}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
@@ -595,6 +634,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.wedding_anniversary_thank_offering}
                   onChange={handleInputChange('wedding_anniversary_thank_offering')}
+                  onFocus={(e) => e.target.select()}
                   sx={{ mb: 2 }}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
@@ -610,6 +650,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.special_thanks_amount}
                   onChange={handleInputChange('special_thanks_amount')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -620,7 +661,7 @@ const ManualEntryTab: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Donation Purpose"
+                  label="Other Purpose"
                   value={formData.donation_for}
                   onChange={handleInputChange('donation_for')}
                 />
@@ -628,10 +669,11 @@ const ManualEntryTab: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Donation Amount"
+                  label="Other Amount"
                   type="number"
                   value={formData.donation_amount}
                   onChange={handleInputChange('donation_amount')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -654,6 +696,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.harvest_auction_amount}
                   onChange={handleInputChange('harvest_auction_amount')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -676,6 +719,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.st_stephens_social_aid_fund}
                   onChange={handleInputChange('st_stephens_social_aid_fund')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -688,6 +732,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.charity_fund_amount}
                   onChange={handleInputChange('charity_fund_amount')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -710,6 +755,7 @@ const ManualEntryTab: React.FC = () => {
                   type="number"
                   value={formData.mission_and_evangelism_fund}
                   onChange={handleInputChange('mission_and_evangelism_fund')}
+                  onFocus={(e) => e.target.select()}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   }}
@@ -813,24 +859,35 @@ const ManualEntryTab: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
         <Button
           variant="outlined"
-          onClick={validateForm}
-          disabled={isValidating || !formData.name}
-          startIcon={isValidating ? <CircularProgress size={20} /> : <Save />}
+          color="error"
+          onClick={handleClearForm}
+          startIcon={<Clear />}
         >
-          {isValidating ? 'Validating...' : 'Validate Form'}
+          Clear
         </Button>
         
-        <Button
-          variant="contained"
-          onClick={handleGenerateReceipt}
-          disabled={isGenerating || !validation?.valid}
-          startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <Receipt />}
-        >
-          {isGenerating ? 'Generating...' : 'Generate Receipt'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={validateForm}
+            disabled={isValidating || !formData.name}
+            startIcon={isValidating ? <CircularProgress size={20} /> : <Save />}
+          >
+            {isValidating ? 'Validating...' : 'Validate Form'}
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={handleGenerateReceipt}
+            disabled={isGenerating || !validation?.valid}
+            startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <Receipt />}
+          >
+            {isGenerating ? 'Generating...' : 'Generate Receipt'}
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

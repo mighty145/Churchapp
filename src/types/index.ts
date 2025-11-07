@@ -123,10 +123,62 @@ export interface CollectionStatistics {
   mission_and_evangelism_fund: number;
 }
 
+export interface ExtractRecord {
+  id: string;
+  invoice_date: string;
+  receipt_no: string;
+  name: string;
+  payment_method: string;
+  total: number;
+  description: string;
+}
+
 export interface BibleVerse {
   verse: string;
   reference: string;
   date: string;
+}
+
+export interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  sub_category?: string;
+  audit_category?: string;
+  audit_account_head?: string;
+  description: string;
+  amount: number;
+  payment_mode: 'cash' | 'cheque' | 'online';
+  vendor?: string;
+  receipt_number?: string;
+  payment_cleared_date?: string;
+  payment_status?: string;
+  receipt_available?: string;
+  expense_account?: string;
+  notes?: string;
+  document_urls?: string[];
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ExpenseCreate {
+  date: string;
+  category: string;
+  sub_category?: string;
+  audit_category?: string;
+  audit_account_head?: string;
+  description: string;
+  amount: number;
+  payment_mode: 'cash' | 'cheque' | 'online';
+  vendor?: string;
+  receipt_number?: string;
+  payment_cleared_date?: string;
+  payment_status?: string;
+  receipt_available?: string;
+  expense_account?: string;
+  notes?: string;
+  document_urls?: string[];
 }
 
 export interface ApiResponse<T> {

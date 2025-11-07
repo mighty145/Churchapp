@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import React, { useState } from 'react';
 import {
   Container,
@@ -21,48 +22,52 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
+
+  // Always redirect /login to /login?role=admin if no role is present
+  useEffect(() => {
+    const roleParam = searchParams.get('role');
+    if (!roleParam) {
+      navigate('/login?role=admin', { replace: true });
+    }
+  }, [searchParams, navigate]);
+
   const role = searchParams.get('role') || 'member';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!phoneNumber.trim()) {
       setError('Phone number is required');
       return;
     }
-
     if (phoneNumber.length !== 10) {
       setError('Please enter a valid 10-digit phone number');
       return;
     }
-
-    // Let the backend handle authorization validation
-    // No need for frontend hardcoded phone number validation
-
     setLoading(true);
     setError('');
-
     try {
-      console.log('Attempting login with phone:', phoneNumber.trim());
-      console.log('API URL:', process.env.REACT_APP_API_URL);
-      
+      // First pass: check mobile number existence
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/api/check-mobile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneNumber.trim() })
+      });
+      const result = await response.json();
+      if (!result.success) {
+        setError(result.error || 'Server error. Please try again.');
+        setLoading(false);
+        return;
+      }
+      if (!result.exists) {
+        setError('Mobile number not found. Please contact admin.');
+        setLoading(false);
+        return;
+      }
+      // Second pass: proceed with login (or OTP step next)
       await login({ phone_number: phoneNumber.trim() });
-      console.log('Login successful, navigating to dashboard');
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Login error details:', error);
-      console.error('Error response:', error.response);
-      console.error('Error message:', error.message);
-      
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else if (error.response?.status === 500) {
-        setError('Server error. Please try again later.');
-      } else if (error.message?.includes('Network Error')) {
-        setError('Network connection failed. Please check your connection and try again.');
-      } else {
-        setError('Login failed. Please try again.');
-      }
+      setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -125,7 +130,7 @@ const LoginPage: React.FC = () => {
               autoFocus
               value={phoneNumber}
               onChange={handlePhoneChange}
-              placeholder="9823786415"
+              placeholder=""
               helperText={
                 role === 'admin' 
                   ? "Admin access: Enter your authorized 10-digit number" 
@@ -157,7 +162,7 @@ const LoginPage: React.FC = () => {
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              New to the platform? Your account will be created automatically.
+              New to the platform? Please contact admin.
             </Typography>
             <Button
               variant="text"

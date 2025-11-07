@@ -65,27 +65,11 @@ const HomePage: React.FC = () => {
 
         <Fade in timeout={1500}>
           <Typography variant="h5" color="text.secondary" paragraph>
-            Donation & Receipt Management Platform
+            Offering & Receipt Management Platform
           </Typography>
         </Fade>
 
-        {/* Church Image */}
-        <Fade in timeout={1750}>
-          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
-            <img 
-              src="/Homepageimage.jpg" 
-              alt="Methodist English Church, Kirkee" 
-              style={{
-                maxWidth: '100%',
-                height: 'auto',
-                maxHeight: '400px',
-                borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                objectFit: 'cover'
-              }}
-            />
-          </Box>
-        </Fade>
+        {/* Church Image removed as requested */}
 
         {/* Bible Verse */}
         <Fade in timeout={2000}>
@@ -150,7 +134,7 @@ const HomePage: React.FC = () => {
                 color="text.secondary" 
                 sx={{ mt: 3 }}
               >
-                Login with your phone number to access donation history and receipts.
+                Login with your phone number to access offering history and receipts.
               </Typography>
             </CardContent>
           </Card>

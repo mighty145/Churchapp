@@ -27,6 +27,7 @@ import {
   AccountCircle,
   Notifications,
   Settings,
+  CurrencyRupee,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,13 +61,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleLogout = async () => {
     await logout();
     handleClose();
-    navigate('/');
+  navigate('/login?role=admin', { replace: true }); // Force redirect to admin login page after logout
   };
 
   const menuItems = [
     { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
     { text: 'Receipts', icon: <Receipt />, path: '/receipts' },
     ...(isAdmin ? [
+      { text: 'Expenses', icon: <CurrencyRupee />, path: '/expenses' },
       { text: 'Reports', icon: <Assessment />, path: '/reports' },
       { text: 'Reconciliation', icon: <AccountBalance />, path: '/reconciliation' },
     ] : []),
