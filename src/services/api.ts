@@ -10,7 +10,6 @@ import {
   BibleVerse,
   EnvelopeDonation,
   CollectionStatistics,
-  ExtractRecord,
   Expense,
   ExpenseCreate,
 } from '../types';

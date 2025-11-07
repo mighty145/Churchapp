@@ -68,7 +68,7 @@ interface Expense {
 }
 
 const ExpensesPage: React.FC = () => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -323,6 +323,7 @@ const ExpensesPage: React.FC = () => {
     if (startDate && endDate) {
       fetchExpenses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const fetchExpenses = async () => {
