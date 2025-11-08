@@ -461,60 +461,6 @@ const SundayReportTab: React.FC = () => {
     }
   };
 
-  const handleDownload = async (filename: string, downloadUrl: string) => {
-    try {
-      console.log(`📥 Download request: filename=${filename}, url=${downloadUrl}`);
-      
-      if (!filename || !downloadUrl) {
-        console.error('Download failed: missing filename or URL');
-        setMessage('❌ Download failed: Invalid file information');
-        return;
-      }
-      
-      console.log('🔄 Requesting fresh PDF from server...');
-      
-      // Use API service with cache busting
-      const blob = await apiService.downloadSundayReportFile(downloadUrl);
-      console.log(`📄 Downloaded blob: ${blob.size} bytes, type: ${blob.type}`);
-      
-      // Verify it's actually a PDF
-      if (blob.type !== 'application/pdf' && !filename.toLowerCase().endsWith('.pdf')) {
-        console.warn('⚠️ Downloaded file may not be a PDF:', blob.type);
-      }
-      
-      // Log file size to help identify if we got the right version
-      if (blob.size < 10000) {
-        console.warn('⚠️ PDF file seems small - may not be exact DOCX conversion');
-      } else if (blob.size > 100000) {
-        console.log('✅ PDF file is large - likely exact DOCX conversion');
-      }
-      
-      const url = window.URL.createObjectURL(blob);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = url;
-      downloadLink.download = filename;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      window.URL.revokeObjectURL(url);
-    } catch (error: any) {
-      console.error('Download error:', error);
-      
-      if (error.response) {
-        const status = error.response.status;
-        if (status === 401) {
-          setMessage('❌ Authentication required. Please login to download files.');
-        } else if (status === 403) {
-          setMessage('❌ Admin access required to download files.');
-        } else {
-          setMessage('❌ Failed to download file');
-        }
-      } else {
-        setMessage('⚠️ Network error occurred during download');
-      }
-    }
-  };
-
   const handleGeneratePdfFromExistingDocx = async () => {
     console.log('🎬 handleGeneratePdfFromExistingDocx called');
     console.log('📁 generatedFiles state:', generatedFiles);
