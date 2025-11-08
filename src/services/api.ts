@@ -181,11 +181,23 @@ class ApiService {
     return response.data;
   }
 
-  async downloadInvoiceReceiptPDF(receiptNumber: string): Promise<Blob> {
+  async downloadInvoiceReceiptPDF(receiptNumber: string): Promise<{ blob: Blob; filename: string }> {
     const response = await this.api.get(`/api/invoices/download-receipt/${receiptNumber}`, {
       responseType: 'blob',
     });
-    return response.data;
+    
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `Receipt_${receiptNumber}.pdf`; // Default fallback
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename=([^;]+)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].trim().replace(/['"]/g, '');
+      }
+    }
+    
+    return { blob: response.data, filename };
   }
 
 
@@ -236,12 +248,27 @@ class ApiService {
     return response.data;
   }
 
-  async convertDocxToPdf(docxFilename: string): Promise<any> {
-    console.log('API Service - Convert DOCX to PDF request:', docxFilename);
+  async convertDocxToPdf(blobDocxName: string, docxFilename?: string): Promise<Blob> {
+    console.log('API Service - Convert DOCX to PDF request:', { blobDocxName, docxFilename });
     const response = await this.api.post('/api/sunday-reports/convert-docx-to-pdf', {
+      blob_docx_name: blobDocxName,
       docx_filename: docxFilename
+    }, {
+      responseType: 'blob' // Receive PDF as binary blob
     });
-    console.log('API Service - Convert DOCX to PDF response:', response.data);
+    console.log('API Service - Convert DOCX to PDF response: PDF blob received', response.data.size, 'bytes');
+    return response.data;
+  }
+
+  async downloadDocxFromBlob(blobDocxName: string, docxFilename?: string): Promise<Blob> {
+    console.log('API Service - Download DOCX from blob request:', { blobDocxName, docxFilename });
+    const response = await this.api.post('/api/sunday-reports/download-docx', {
+      blob_docx_name: blobDocxName,
+      docx_filename: docxFilename
+    }, {
+      responseType: 'blob' // Receive DOCX as binary blob
+    });
+    console.log('API Service - Download DOCX response: DOCX blob received', response.data.size, 'bytes');
     return response.data;
   }
 

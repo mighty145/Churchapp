@@ -19,7 +19,10 @@ import {
   Select,
   FormControl,
   InputLabel,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import { DashboardStats, CollectionStatistics, ExtractRecord } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
@@ -37,6 +40,7 @@ const DashboardPage: React.FC = () => {
   const [collectionEndDate, setCollectionEndDate] = useState<string>('');
   const [extractRecords, setExtractRecords] = useState<ExtractRecord[]>([]);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('ALL');
+  const [downloadingReceipts, setDownloadingReceipts] = useState<Set<string>>(new Set());
   const { user, isAdmin } = useAuth();
   const { lastMessage, isConnected } = useWebSocket();
 
@@ -242,6 +246,36 @@ const DashboardPage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadReceipt = async (receiptNumber: string) => {
+    try {
+      // Add to downloading set
+      setDownloadingReceipts(prev => new Set(prev).add(receiptNumber));
+
+      // Download receipt PDF from blob storage with original filename
+      const { blob, filename } = await apiService.downloadInvoiceReceiptPDF(receiptNumber);
+      
+      // Create download link with original filename
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      alert('Failed to download receipt. The receipt may not be available.');
+    } finally {
+      // Remove from downloading set
+      setDownloadingReceipts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(receiptNumber);
+        return newSet;
+      });
+    }
   };
 
   // Handle real-time updates
@@ -585,6 +619,7 @@ const DashboardPage: React.FC = () => {
                       <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Amount</TableCell>
                       <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Payment Method</TableCell>
                       <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Description</TableCell>
+                      <TableCell sx={{ color: 'primary.contrastText', fontWeight: 'bold' }}>Receipt</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -599,6 +634,22 @@ const DashboardPage: React.FC = () => {
                           <TableCell>₹{record.total.toFixed(2)}</TableCell>
                           <TableCell>{record.payment_method}</TableCell>
                           <TableCell>{record.description}</TableCell>
+                          <TableCell>
+                            <Tooltip title="Download Receipt">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleDownloadReceipt(record.receipt_no)}
+                                disabled={downloadingReceipts.has(record.receipt_no)}
+                                size="small"
+                              >
+                                {downloadingReceipts.has(record.receipt_no) ? (
+                                  <CircularProgress size={20} />
+                                ) : (
+                                  <DownloadIcon />
+                                )}
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
                         </TableRow>
                       ))}
                   </TableBody>

@@ -109,6 +109,7 @@ const SundayReportTab: React.FC = () => {
     pdf_filename?: string;
     docx_download_url?: string;
     pdf_download_url?: string;
+    blob_docx_name?: string; // Actual blob storage filename with timestamp
   } | null>(null);
   
   const [pastorSignatories, setPastorSignatories] = useState<PastorSignatory[]>([
@@ -430,10 +431,12 @@ const SundayReportTab: React.FC = () => {
         docx_filename: result.docx_filename,
         pdf_filename: undefined, // No PDF generated yet
         docx_download_url: result.docx_download_url,
-        pdf_download_url: undefined // No PDF URL yet
+        pdf_download_url: undefined, // No PDF URL yet
+        blob_docx_name: result.blob_docx_name // Store actual blob storage name for PDF conversion
       });
       
       console.log('Sunday Report Generated:', result);
+      console.log('Blob DOCX Name stored:', result.blob_docx_name);
     } catch (error: any) {
       console.error('Error generating Sunday report:', error);
       
@@ -513,46 +516,59 @@ const SundayReportTab: React.FC = () => {
   };
 
   const handleGeneratePdfFromExistingDocx = async () => {
-    if (!generatedFiles || !generatedFiles.docx_filename) {
-      setMessage('Please save the report first to generate DOCX file');
+    console.log('🎬 handleGeneratePdfFromExistingDocx called');
+    console.log('📁 generatedFiles state:', generatedFiles);
+    
+    if (!generatedFiles) {
+      console.error('❌ No generatedFiles in state');
+      setMessage('❌ Please save the report first to generate DOCX file');
+      return;
+    }
+    
+    if (!generatedFiles.blob_docx_name) {
+      console.error('❌ No blob_docx_name in generatedFiles:', generatedFiles);
+      setMessage('❌ Missing blob storage information. Please regenerate the report.');
       return;
     }
 
     setIsGeneratingPdf(true);
-    setMessage('Generating PDF from existing DOCX...');
+    setMessage('🔄 Generating PDF from existing DOCX...');
     setDownloadAnchorEl(null);
 
     try {
-      console.log('🔄 Converting existing DOCX to PDF:', generatedFiles.docx_filename);
+      console.log('🔄 Converting existing DOCX to PDF:', {
+        blob_name: generatedFiles.blob_docx_name,
+        display_name: generatedFiles.docx_filename
+      });
       console.log('📞 Calling API endpoint: /api/sunday-reports/convert-docx-to-pdf');
       
       // Call API to convert existing DOCX to PDF (exact copy)
-      const result = await apiService.convertDocxToPdf(generatedFiles.docx_filename);
+      // API now returns PDF blob directly
+      const pdfBlob = await apiService.convertDocxToPdf(
+        generatedFiles.blob_docx_name,
+        generatedFiles.docx_filename
+      );
       
-      console.log('📦 API Response received:', {
-        success: result.success,
-        message: result.message,
-        pdf_filename: result.pdf_filename,
-        pdf_download_url: result.pdf_download_url
-      });
+      console.log('📦 PDF blob received:', pdfBlob.size, 'bytes');
       
-      if (!result.pdf_filename || !result.pdf_download_url) {
-        console.error('PDF generation failed - missing filename or URL:', result);
-        setMessage('❌ PDF generation failed: No file generated');
-        return;
-      }
+      // Generate filename for download
+      const pdfFilename = generatedFiles.docx_filename 
+        ? generatedFiles.docx_filename.replace('.docx', '.pdf')
+        : 'Sunday_report.pdf';
       
-      setMessage(`✅ PDF generated from DOCX successfully!`);
-      console.log(`Downloading PDF: ${result.pdf_filename} from ${result.pdf_download_url}`);
+      console.log('⬇️ Downloading PDF:', pdfFilename);
       
-      // Download the PDF immediately with cache busting
-      const cacheBustUrl = `${result.pdf_download_url}?t=${Date.now()}`;
-      console.log('⬇️ Starting download:', {
-        filename: result.pdf_filename,
-        original_url: result.pdf_download_url,
-        cache_bust_url: cacheBustUrl
-      });
-      await handleDownload(result.pdf_filename, cacheBustUrl);
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = pdfFilename;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      window.URL.revokeObjectURL(url);
+      
+      setMessage(`✅ PDF generated and downloaded successfully!`);
       
     } catch (error: any) {
       console.error('Error generating PDF from DOCX:', error);
@@ -1514,8 +1530,39 @@ const SundayReportTab: React.FC = () => {
                 }}
               >
                 <MenuItem
-                  onClick={() => {
-                    handleDownload(generatedFiles.docx_filename!, generatedFiles.docx_download_url!);
+                  onClick={async () => {
+                    try {
+                      if (!generatedFiles.blob_docx_name) {
+                        setMessage('❌ Missing blob storage information. Please regenerate the report.');
+                        setDownloadAnchorEl(null);
+                        return;
+                      }
+
+                      console.log('📥 Downloading DOCX from blob storage:', generatedFiles.blob_docx_name);
+                      
+                      // Download DOCX blob from server
+                      const docxBlob = await apiService.downloadDocxFromBlob(
+                        generatedFiles.blob_docx_name,
+                        generatedFiles.docx_filename
+                      );
+
+                      console.log('📦 DOCX blob received:', docxBlob.size, 'bytes');
+
+                      // Create download link and trigger download
+                      const url = window.URL.createObjectURL(docxBlob);
+                      const downloadLink = document.createElement('a');
+                      downloadLink.href = url;
+                      downloadLink.download = generatedFiles.docx_filename || 'Sunday_report.docx';
+                      document.body.appendChild(downloadLink);
+                      downloadLink.click();
+                      document.body.removeChild(downloadLink);
+                      window.URL.revokeObjectURL(url);
+
+                      console.log('✅ DOCX downloaded successfully');
+                    } catch (error) {
+                      console.error('❌ Error downloading DOCX:', error);
+                      setMessage('❌ Failed to download DOCX file');
+                    }
                     setDownloadAnchorEl(null);
                   }}
                 >

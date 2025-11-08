@@ -25,7 +25,8 @@ import {
   LocationOn,
   Phone,
   CalendarToday,
-  Clear
+  Clear,
+  Download
 } from '@mui/icons-material';
 import apiService from '../../services/api';
 
@@ -116,6 +117,7 @@ const ManualEntryTab: React.FC = () => {
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [receiptResult, setReceiptResult] = useState<GenerateReceiptResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -831,15 +833,19 @@ const ManualEntryTab: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Button
                 variant="contained"
-                color="primary"
-                startIcon={<span>📄</span>}
+                color="success"
+                size="large"
+                startIcon={isDownloading ? <CircularProgress size={20} color="inherit" /> : <Download />}
+                disabled={isDownloading}
                 onClick={async () => {
+                  setIsDownloading(true);
+                  setError(null);
                   try {
-                    const blob = await apiService.downloadInvoiceReceiptPDF(receiptResult.receipt_number);
+                    const { blob, filename } = await apiService.downloadInvoiceReceiptPDF(receiptResult.receipt_number);
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `Receipt_${receiptResult.receipt_number}.pdf`;
+                    link.download = filename;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -847,11 +853,12 @@ const ManualEntryTab: React.FC = () => {
                   } catch (error: any) {
                     console.error('Download error:', error);
                     setError('Failed to download receipt: ' + (error.response?.data?.detail || error.message));
+                  } finally {
+                    setIsDownloading(false);
                   }
                 }}
-                sx={{ mr: 1 }}
               >
-                Download PDF Receipt
+                {isDownloading ? 'Downloading...' : 'Download PDF Receipt'}
               </Button>
             </Box>
           )}
